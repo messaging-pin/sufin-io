@@ -280,16 +280,24 @@ export function useSupabaseChat({
       status: 'delivered' | 'read',
       payload: any
     ) => {
-      if (messageIds.length === 0) return;
+      if (!messageIds || messageIds.length === 0) return;
       const ids = new Set(messageIds);
       const at = payload?.at || new Date().toISOString();
+      const readerId = payload?.readerId;
+      const forSenderId = payload?.forSenderId;
 
       setChats((prevChats: Chat[]) =>
         prevChats.map((chat) => {
-          if (!chat.messages.some((m) => ids.has(m.id))) return chat;
+          const isTargetChat =
+            chat.messages.some((m) => ids.has(m.id)) ||
+            (readerId && chat.id === readerId) ||
+            (forSenderId && chat.id === forSenderId);
 
-          const updatedMessages = chat.messages.map((m) => {
-            if (!ids.has(m.id) || m.sender !== 'me') return m;
+          if (!isTargetChat) return chat;
+
+          const updatedMessages = chat.messages.map((m, idx) => {
+            const isTargetMsg = ids.has(m.id) || (idx === chat.messages.length - 1 && m.sender === 'me');
+            if (!isTargetMsg || m.sender !== 'me') return m;
             // Never walk a message backwards down the ladder.
             if (m.status === 'read') return m;
 
@@ -297,11 +305,10 @@ export function useSupabaseChat({
               return { ...m, status: 'delivered' as const, deliveredAt: m.deliveredAt || at };
             }
 
-            const readerId = payload?.readerId;
-            const readerName = payload?.readerName || 'Someone';
+            const rName = payload?.readerName || 'Someone';
             const readBy = m.readBy ? [...m.readBy] : [];
             if (readerId && !readBy.some((r) => r.id === readerId)) {
-              readBy.push({ id: readerId, name: readerName, readAt: at });
+              readBy.push({ id: readerId, name: rName, readAt: at });
             }
 
             return {
@@ -695,8 +702,8 @@ export function useSupabaseChat({
 
     const sharedConvId = [senderId, recipientId].sort().join('_');
 
-    // Generate a proper UUID for the database row
-    const dbUUID = crypto.randomUUID();
+    // Preserve the message UUID so sender and recipient use identical IDs for instant read receipts
+    const msgUUID = (message.id && UUID_REGEX.test(message.id)) ? message.id : crypto.randomUUID();
 
     // 1. Broadcast to online clients instantly
     if (channelRef.current && channelReadyRef.current) {
@@ -711,7 +718,7 @@ export function useSupabaseChat({
           recipientId,
           recipientName: targetChatName,
           sharedConvId,
-          message: { ...message, id: dbUUID }
+          message: { ...message, id: msgUUID }
         }
       });
     } else {
@@ -721,7 +728,7 @@ export function useSupabaseChat({
     // 2. Persist to PostgreSQL (uses UUID so postgres_changes fallback works)
     try {
       const { error } = await supabase.from('messages').insert({
-        id: dbUUID,
+        id: msgUUID,
         conversation_id: sharedConvId,
         sender_id: senderId,
         recipient_id: recipientId,
