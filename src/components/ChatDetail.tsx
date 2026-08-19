@@ -324,7 +324,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     )}
 
                     {/* Bubble Container with Bridged Absolute Hover Actions */}
-                    <div className="relative group cursor-grab active:cursor-grabbing min-w-0 max-w-full">
+                    <div data-message-bubble="true" className="relative group cursor-grab active:cursor-grabbing min-w-0 max-w-full">
                       {/* Left Hover Actions for Sent Messages (ABSOLUTE POS with continuous hit area) */}
                       {isMe && (
                         <div
@@ -361,6 +361,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
                       {/* The Message Bubble */}
                       <div
+                        data-message-bubble="true"
                         className={`px-4 py-2.5 rounded-[20px] text-[15px] leading-relaxed select-text break-words whitespace-pre-wrap [overflow-wrap:anywhere] overflow-hidden ${
                           isMe
                             ? 'glass-bubble-sent text-white rounded-br-[4px]'

@@ -22,16 +22,34 @@ export const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
   const [offsetX, setOffsetX] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const startXRef = useRef<number>(0);
+  const startYRef = useRef<number>(0);
   const currentXRef = useRef<number>(0);
+  const isGestureActiveRef = useRef<boolean>(false);
+  const isHorizontalSwipeRef = useRef<boolean>(false);
   const longPressTimerRef = useRef<number | null>(null);
   const lastTapRef = useRef<number>(0);
 
-  const SWIPE_THRESHOLD = 50; // pixels to trigger reply
+  const SWIPE_THRESHOLD = 45; // pixels to trigger reply
 
-  const handleStart = (clientX: number) => {
+  const isTouchOnBubble = (target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof HTMLElement)) return false;
+    return Boolean(
+      target.closest('.glass-bubble-sent, .glass-bubble-received, [data-message-bubble="true"], .message-bubble-content')
+    );
+  };
+
+  const handleStart = (clientX: number, clientY: number, target: EventTarget | null) => {
+    // ONLY activate swipe if the finger touched directly on the message bubble component!
+    if (!isTouchOnBubble(target)) {
+      isGestureActiveRef.current = false;
+      return;
+    }
+
     startXRef.current = clientX;
+    startYRef.current = clientY;
     currentXRef.current = clientX;
-    setIsDragging(true);
+    isGestureActiveRef.current = true;
+    isHorizontalSwipeRef.current = false;
 
     // Long-press timer: Trigger options ONLY when holding for 400ms without dragging
     longPressTimerRef.current = window.setTimeout(() => {
@@ -41,16 +59,35 @@ export const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
     }, 400);
   };
 
-  const handleMove = (clientX: number) => {
-    if (!isDragging) return;
+  const handleMove = (clientX: number, clientY: number) => {
+    if (!isGestureActiveRef.current) return;
     currentXRef.current = clientX;
     const deltaX = clientX - startXRef.current;
+    const deltaY = clientY - startYRef.current;
 
-    // Cancel long press if user is actively dragging / swiping
-    if (Math.abs(deltaX) > 8 && longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
+    // Determine direction intent: if user is scrolling vertically, cancel horizontal swipe
+    if (!isHorizontalSwipeRef.current) {
+      if (Math.abs(deltaY) > 8 && Math.abs(deltaY) > Math.abs(deltaX)) {
+        // Vertical scroll intent — cancel swipe
+        isGestureActiveRef.current = false;
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        return;
+      }
+      if (Math.abs(deltaX) > 8 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe intent on message bubble
+        isHorizontalSwipeRef.current = true;
+        setIsDragging(true);
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+      }
     }
+
+    if (!isHorizontalSwipeRef.current) return;
 
     // Swipe direction resistance
     if (!isMe && deltaX > 0) {
@@ -68,22 +105,24 @@ export const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
       longPressTimerRef.current = null;
     }
 
-    const deltaX = currentXRef.current - startXRef.current;
-    setIsDragging(false);
-
-    // Check if swipe exceeded threshold to trigger reply
-    if (Math.abs(offsetX) >= SWIPE_THRESHOLD || Math.abs(deltaX) >= SWIPE_THRESHOLD) {
-      onReply(message);
+    if (isHorizontalSwipeRef.current) {
+      const deltaX = currentXRef.current - startXRef.current;
+      // Check if swipe exceeded threshold to trigger reply
+      if (Math.abs(offsetX) >= SWIPE_THRESHOLD || Math.abs(deltaX) >= SWIPE_THRESHOLD) {
+        onReply(message);
+      }
     }
 
-    // Spring back to 0
+    isGestureActiveRef.current = false;
+    isHorizontalSwipeRef.current = false;
+    setIsDragging(false);
     setOffsetX(0);
   };
 
   const handleTapCheck = (e: React.MouseEvent) => {
+    if (!isTouchOnBubble(e.target)) return;
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
-      // Double tap detected
       onDoubleTap(e);
     }
     lastTapRef.current = now;
@@ -94,17 +133,16 @@ export const SwipeableMessage: React.FC<SwipeableMessageProps> = ({
   return (
     <div
       className="relative w-full flex items-center select-none touch-pan-y"
-      onTouchStart={(e) => handleStart(e.touches[0].clientX)}
-      onTouchMove={(e) => handleMove(e.touches[0].clientX)}
+      onTouchStart={(e) => handleStart(e.touches[0].clientX, e.touches[0].clientY, e.target)}
+      onTouchMove={(e) => handleMove(e.touches[0].clientX, e.touches[0].clientY)}
       onTouchEnd={handleEnd}
       onMouseDown={(e) => {
-        // Only primary mouse button on desktop
         if (e.button === 0 && window.innerWidth >= 768) {
-          handleStart(e.clientX);
+          handleStart(e.clientX, e.clientY, e.target);
         }
       }}
       onMouseMove={(e) => {
-        if (isDragging) handleMove(e.clientX);
+        if (isDragging) handleMove(e.clientX, e.clientY);
       }}
       onMouseUp={handleEnd}
       onMouseLeave={handleEnd}
