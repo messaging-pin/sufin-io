@@ -71,7 +71,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
   } = useVoiceRecorder();
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentRealTimeDayHeader = formatDayHeader(new Date());
@@ -111,7 +111,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
   const typingTimeoutRef = useRef<any>(null);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement | HTMLInputElement>) => {
     const val = e.target.value;
     setInputText(val);
 
@@ -518,11 +518,8 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
       {/* Message Input Footer with Liquid Glass styling */}
       <footer className="px-3.5 py-2.5 md:px-6 md:py-3.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
-        <form
-          onSubmit={handleSend}
-          autoComplete="off"
-          data-form-type="other"
-          className="glass-card flex items-center rounded-full px-3.5 py-2 border border-white/[0.12] focus-within:border-white/30 transition-all shadow-inner w-full"
+        <div
+          className="glass-card flex items-center rounded-full px-3.5 py-1.5 md:py-2 border border-white/[0.12] focus-within:border-white/30 transition-all shadow-inner w-full min-h-[44px]"
         >
           {isRecording ? (
             /* Active Live Voice Recording Pill */
@@ -592,12 +589,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 )}
               </div>
 
-              {/* Text Input with Realtime Typing debouncer & Android Autofill Bar Suppression */}
-              <input
+              {/* Chat Composer Textarea (Disables Android Autofill Key/Card Bar completely) */}
+              <textarea
                 ref={inputRef}
-                type="text"
-                name="chat-msg-content"
-                id="chat-msg-content"
+                rows={1}
                 value={inputText}
                 onChange={handleInputChange}
                 onKeyDown={(e) => {
@@ -609,20 +604,18 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 placeholder="Message..."
                 enterKeyHint="send"
                 inputMode="text"
-                autoComplete="one-time-code"
+                autoComplete="off"
                 autoCorrect="off"
                 autoCapitalize="sentences"
                 spellCheck={false}
-                data-form-type="other"
-                data-lpignore="true"
-                data-1p-ignore="true"
-                className="flex-1 bg-transparent text-[15.5px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-normal px-2.5 py-0.5"
+                className="flex-1 bg-transparent text-[15.5px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-[1.4] px-2.5 py-1 resize-none h-[34px] max-h-[100px] overflow-y-auto no-scrollbar"
               />
 
               {/* Right Action Icons */}
               {inputText.trim() ? (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => handleSend()}
                   onMouseDown={(e) => e.preventDefault()}
                   onTouchStart={(e) => {
                     e.preventDefault();
@@ -671,7 +664,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
               )}
             </>
           )}
-        </form>
+        </div>
 
         <input
           type="file"
