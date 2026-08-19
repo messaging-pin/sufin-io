@@ -293,7 +293,7 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
     const chatListTimeStr = formatChatListTime(now);
 
     const newMessage: Message = {
-      id: `msg-${Date.now()}`,
+      id: crypto.randomUUID(),
       sender: 'me',
       text: messageText,
       mediaType,
@@ -362,7 +362,7 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
   const handleForwardMessage = (message: Message, targetChatId: string) => {
     const now = new Date();
     const forwardedMsg: Message = {
-      id: `fwd-${Date.now()}`,
+      id: crypto.randomUUID(),
       sender: 'me',
       text: message.text,
       isForwarded: true,

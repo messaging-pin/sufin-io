@@ -64,6 +64,7 @@ export function useSupabaseChat({
   }, []);
 
   const channelRef = useRef<any>(null);
+  const channelReadyRef = useRef(false);
   const selectedChatRef = useRef<Chat | null>(null);
   const hasLoadedHistory = useRef(false);
   const ackedReadIds = useRef<Set<string>>(new Set());
@@ -235,6 +236,7 @@ export function useSupabaseChat({
     if (!currentUser?.id) return;
     const myId = currentUser.id;
 
+    channelReadyRef.current = false;
     const channel = supabase.channel('pinterest_realtime_v7', {
       config: { broadcast: { self: false } }
     });
@@ -584,6 +586,20 @@ export function useSupabaseChat({
 
       .subscribe((status, err) => {
         console.log('[Supabase Realtime] Channel subscription status:', status, err);
+        if (status === 'SUBSCRIBED') {
+          channelReadyRef.current = true;
+          console.log('[Supabase Realtime] ✅ Channel is SUBSCRIBED and ready for broadcast!');
+        } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          channelReadyRef.current = false;
+          console.warn('[Supabase Realtime] ⚠️ Channel error/timeout, will retry...');
+          // Auto-retry subscription after 3 seconds
+          setTimeout(() => {
+            try {
+              supabase.removeChannel(channel);
+            } catch (e) {}
+            // The useEffect cleanup + re-run will handle re-subscription
+          }, 3000);
+        }
       });
 
     return () => {
@@ -617,17 +633,19 @@ export function useSupabaseChat({
         localStorage.setItem(key, JSON.stringify(Array.from(ackedReadIds.current)));
       } catch (e) {}
 
-      channelRef.current.send({
-        type: 'broadcast',
-        event: 'message_read',
-        payload: {
-          forSenderId: chat.id,
-          messageIds: unacked,
-          readerId: currentUser.id,
-          readerName: currentUser.display_name || 'User',
-          at: new Date().toISOString()
-        }
-      });
+      if (channelReadyRef.current) {
+        channelRef.current.send({
+          type: 'broadcast',
+          event: 'message_read',
+          payload: {
+            forSenderId: chat.id,
+            messageIds: unacked,
+            readerId: currentUser.id,
+            readerName: currentUser.display_name || 'User',
+            at: new Date().toISOString()
+          }
+        });
+      }
     },
     [currentUser?.id, currentUser?.display_name]
   );
@@ -635,7 +653,7 @@ export function useSupabaseChat({
   // ─── Send Typing ───
   const sendTypingStatus = useCallback(
     (recipientId: string, isTyping: boolean) => {
-      if (channelRef.current && currentUser?.id) {
+      if (channelRef.current && channelReadyRef.current && currentUser?.id) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'typing_status',
@@ -669,8 +687,12 @@ export function useSupabaseChat({
 
     const sharedConvId = [senderId, recipientId].sort().join('_');
 
+    // Generate a proper UUID for the database row
+    const dbUUID = crypto.randomUUID();
+
     // 1. Broadcast to online clients instantly
-    if (channelRef.current) {
+    if (channelRef.current && channelReadyRef.current) {
+      console.log('[Realtime] Broadcasting instant_message to channel (SUBSCRIBED)');
       channelRef.current.send({
         type: 'broadcast',
         event: 'instant_message',
@@ -681,16 +703,17 @@ export function useSupabaseChat({
           recipientId,
           recipientName: targetChatName,
           sharedConvId,
-          message
+          message: { ...message, id: dbUUID }
         }
       });
+    } else {
+      console.warn('[Realtime] Channel NOT subscribed yet — message will be delivered via DB fallback.');
     }
 
-    // 2. Persist to PostgreSQL
+    // 2. Persist to PostgreSQL (uses UUID so postgres_changes fallback works)
     try {
-      const msgId = message.id || `msg-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
       const { error } = await supabase.from('messages').insert({
-        id: msgId,
+        id: dbUUID,
         conversation_id: sharedConvId,
         sender_id: senderId,
         recipient_id: recipientId,
