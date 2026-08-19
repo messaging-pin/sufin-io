@@ -493,6 +493,14 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
     setSelectedChat(newChat);
   };
 
+  const activeSelectedChat = selectedChat
+    ? chats.find(
+        (c) =>
+          c.id === selectedChat.id ||
+          (c.name && selectedChat.name && c.name.toLowerCase() === selectedChat.name.toLowerCase())
+      ) || selectedChat
+    : null;
+
   return (
     <DeviceFrame>
       {/* Back to Pinterest Top Banner (when accessed from outer app) */}
@@ -531,7 +539,7 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
                     <div className="flex-1 min-h-0 overflow-y-auto">
                       <ChatList
                         chats={filteredChats}
-                        activeChatId={selectedChat?.id}
+                        activeChatId={activeSelectedChat?.id}
                         onSelectChat={handleSelectChat}
                         onOpenContextMenu={(chat) => setContextMenuChat(chat)}
                         searchQuery={searchQuery}
@@ -571,9 +579,9 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
 
             {/* Right Column: Liquid Glass Chat Panel */}
             <div className="flex-1 h-full min-h-0 bg-transparent flex flex-col overflow-hidden">
-              {selectedChat ? (
+              {activeSelectedChat ? (
                 <ChatDetail
-                  chat={selectedChat}
+                  chat={activeSelectedChat}
                   allChats={chats}
                   onBack={() => {}}
                   onSendMessage={handleSendMessage}
@@ -581,8 +589,8 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
                   onDeleteMessage={handleDeleteMessage}
                   onReactMessage={handleReactMessage}
                   onStartCall={handleStartCall}
-                  isPartnerTyping={Boolean(partnerTyping[selectedChat.id])}
-                  onTyping={(isTyping) => sendTypingStatus(selectedChat.id, isTyping)}
+                  isPartnerTyping={Boolean(partnerTyping[activeSelectedChat.id])}
+                  onTyping={(isTyping) => sendTypingStatus(activeSelectedChat.id, isTyping)}
                   onSeen={markChatAsRead}
                   isMobileView={false}
                 />
@@ -600,10 +608,10 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
         ) : (
           /* ================= MOBILE VIEW (Single Screen) ================= */
           <div className="flex-1 h-full w-full flex flex-col min-h-0 relative bg-transparent overflow-hidden">
-            {selectedChat ? (
+            {activeSelectedChat ? (
               /* Active Chat View */
               <ChatDetail
-                chat={selectedChat}
+                chat={activeSelectedChat}
                 allChats={chats}
                 onBack={() => setSelectedChat(null)}
                 onSendMessage={handleSendMessage}
@@ -611,8 +619,8 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
                 onDeleteMessage={handleDeleteMessage}
                 onReactMessage={handleReactMessage}
                 onStartCall={handleStartCall}
-                isPartnerTyping={Boolean(partnerTyping[selectedChat.id])}
-                onTyping={(isTyping) => sendTypingStatus(selectedChat.id, isTyping)}
+                isPartnerTyping={Boolean(partnerTyping[activeSelectedChat.id])}
+                onTyping={(isTyping) => sendTypingStatus(activeSelectedChat.id, isTyping)}
                 onSeen={markChatAsRead}
                 isMobileView={true}
               />
