@@ -14,18 +14,15 @@ interface UseSupabaseChatProps {
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** Best-effort persistence of a status transition; ignores schema gaps and non-UUID dummy IDs. */
-const persistStatus = async (messageIds: string[], status: 'delivered' | 'read', readAt?: string) => {
+/** Best-effort persistence of a status transition in database without throwing 400s */
+const persistStatus = async (messageIds: string[], status: 'delivered' | 'read', _readAt?: string) => {
   const validIds = messageIds.filter((id) => UUID_REGEX.test(id));
   if (validIds.length === 0) return;
   try {
-    const updatePayload: any = { status };
-    if (status === 'read' && readAt) {
-      updatePayload.read_at = readAt;
-    }
-    await supabase.from('messages').update(updatePayload).in('id', validIds);
+    // Update only the known 'status' column to prevent 400 Bad Request from missing table columns
+    await supabase.from('messages').update({ status }).in('id', validIds);
   } catch (e) {
-    console.warn('Status persist notice:', e);
+    // Best effort background sync
   }
 };
 
