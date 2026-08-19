@@ -510,7 +510,81 @@ export function useSupabaseChat({
         }
       })
 
-      .subscribe();
+      // ── Database Fallback Listener: Delivers messages even if broadcast is blocked ──
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'messages' },
+        (payload: any) => {
+          const row = payload.new;
+          if (!row || row.sender_id === myId) return;
+          if (row.recipient_id !== myId && !row.conversation_id?.includes(myId)) return;
+
+          console.log('[Supabase DB Realtime] Inbound message row received:', row.id);
+
+          const date = row.created_at ? new Date(row.created_at) : new Date();
+          const incomingMsg: Message = {
+            id: row.id,
+            sender: 'them',
+            text: row.text || '',
+            mediaType: row.media_type || undefined,
+            mediaUrl: row.media_url || undefined,
+            reaction: row.reaction || undefined,
+            isForwarded: row.is_forwarded || false,
+            timestamp: formatTime(date),
+            dayHeader: date.toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: 'numeric' }),
+            createdAt: date.toISOString(),
+            status: row.status || 'delivered',
+            replyTo: row.reply_to_text ? { text: row.reply_to_text, senderName: row.reply_to_sender || '' } : undefined
+          };
+
+          setChats((prevChats: Chat[]) => {
+            const senderId = row.sender_id;
+            const sharedConvId = row.conversation_id;
+            const existingIndex = prevChats.findIndex(
+              (c) => c.id === senderId || c.id === sharedConvId
+            );
+
+            if (existingIndex !== -1) {
+              return prevChats.map((c, i) => {
+                if (i === existingIndex) {
+                  if (c.messages.some((m) => m.id === incomingMsg.id)) return c;
+                  const updated: Chat = {
+                    ...c,
+                    lastMessage: incomingMsg.text || 'Media',
+                    lastMessageTime: incomingMsg.timestamp || 'Just now',
+                    unreadCount: (c.unreadCount || 0) + (selectedChatRef.current?.id === c.id ? 0 : 1),
+                    messages: [...c.messages, incomingMsg]
+                  };
+                  if (selectedChatRef.current?.id === c.id) {
+                    setSelectedChat(updated);
+                  }
+                  return updated;
+                }
+                return c;
+              });
+            } else {
+              const newChat: Chat = {
+                id: senderId,
+                name: 'User',
+                username: '',
+                avatar: '',
+                isOnline: true,
+                lastMessage: incomingMsg.text || 'Media',
+                lastMessageTime: incomingMsg.timestamp || 'Just now',
+                unreadCount: 1,
+                readStatus: 'none',
+                folder: 'all',
+                messages: [incomingMsg]
+              };
+              return [newChat, ...prevChats];
+            }
+          });
+        }
+      )
+
+      .subscribe((status, err) => {
+        console.log('[Supabase Realtime] Channel subscription status:', status, err);
+      });
 
     return () => {
       supabase.removeChannel(channel);
