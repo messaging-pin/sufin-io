@@ -18,7 +18,7 @@ const MainApp: React.FC = () => {
   };
 
   return (
-    <div className="w-screen h-screen overflow-hidden bg-black font-sans select-none">
+    <div className="w-full h-full h-[100dvh] fixed inset-0 overflow-hidden bg-black font-sans select-none flex flex-col">
       {/* Strict Gate: Only render MessagingPlatform if user is verified */}
       {currentView === 'messages' && user ? (
         <MessagingPlatform onBackToPinterest={() => setCurrentView('pinterest')} />
