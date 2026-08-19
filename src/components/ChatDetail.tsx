@@ -12,13 +12,15 @@ import {
   ArrowLeft,
   X,
   Trash2,
-  Square
+  Square,
+  Play
 } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
 import { MessageActionMenu } from './MessageActionMenu';
 import { SwipeableMessage } from './SwipeableMessage';
 import { VoiceNotePlayer } from './VoiceNotePlayer';
 import { MessageStatus } from './MessageStatus';
+import { MediaViewerModal } from './MediaViewerModal';
 import { useVoiceRecorder } from '../hooks/useVoiceRecorder';
 import { uploadChatAttachment } from '../lib/supabase';
 import { uploadMediaToSupabase } from '../lib/uploadMedia';
@@ -61,6 +63,13 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
   const [reactionToRemove, setReactionToRemove] = useState<{ messageId: string; emoji: string } | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [showInfo, setShowInfo] = useState(false);
+  const [activeMediaModal, setActiveMediaModal] = useState<{
+    url: string;
+    type: 'image' | 'video';
+    senderName: string;
+    senderAvatar?: string;
+    timestamp?: string;
+  } | null>(null);
 
   const {
     isRecording,
@@ -372,13 +381,31 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                           <VoiceNotePlayer audioUrl={msg.mediaUrl} isMe={isMe} />
                         ) : msg.mediaType === 'video' && msg.mediaUrl ? (
                           <div className="space-y-1.5">
-                            <video
-                              src={msg.mediaUrl}
-                              controls
-                              playsInline
-                              preload="metadata"
-                              className="max-h-60 max-w-full rounded-xl cursor-pointer hover:opacity-95 transition"
-                            />
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMediaModal({
+                                  url: msg.mediaUrl!,
+                                  type: 'video',
+                                  senderName: isMe ? 'You' : chat.name,
+                                  senderAvatar: isMe ? undefined : chat.avatar,
+                                  timestamp: msg.timestamp
+                                });
+                              }}
+                              className="relative cursor-pointer group"
+                            >
+                              <video
+                                src={msg.mediaUrl}
+                                playsInline
+                                preload="metadata"
+                                className="max-h-64 max-w-full rounded-xl pointer-events-none group-hover:opacity-95 transition shadow-md"
+                              />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20 rounded-xl group-hover:bg-black/35 transition">
+                                <div className="w-11 h-11 rounded-full bg-black/65 backdrop-blur-md text-white flex items-center justify-center shadow-xl group-hover:scale-110 transition-transform">
+                                  <Play className="w-5 h-5 ml-0.5 fill-white" />
+                                </div>
+                              </div>
+                            </div>
                             {msg.text && (
                               <span className="break-words whitespace-pre-wrap [overflow-wrap:anywhere] block">
                                 {msg.text}
@@ -390,7 +417,17 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                             <img
                               src={msg.mediaUrl}
                               alt="Attachment"
-                              className="max-h-60 rounded-xl object-cover cursor-pointer hover:opacity-95 transition"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveMediaModal({
+                                  url: msg.mediaUrl!,
+                                  type: 'image',
+                                  senderName: isMe ? 'You' : chat.name,
+                                  senderAvatar: isMe ? undefined : chat.avatar,
+                                  timestamp: msg.timestamp
+                                });
+                              }}
+                              className="max-h-64 rounded-xl object-cover cursor-pointer hover:opacity-90 active:scale-[0.98] transition shadow-md"
                             />
                             {msg.text && (
                               <span className="break-words whitespace-pre-wrap [overflow-wrap:anywhere] block">
@@ -761,6 +798,18 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
           onUnsend={(messageId) => {
             if (onDeleteMessage) onDeleteMessage(chat.id, messageId);
           }}
+        />
+      )}
+
+      {/* Fullscreen Media Lightbox Viewer Modal */}
+      {activeMediaModal && (
+        <MediaViewerModal
+          mediaUrl={activeMediaModal.url}
+          mediaType={activeMediaModal.type}
+          senderName={activeMediaModal.senderName}
+          senderAvatar={activeMediaModal.senderAvatar}
+          timestamp={activeMediaModal.timestamp}
+          onClose={() => setActiveMediaModal(null)}
         />
       )}
     </div>
