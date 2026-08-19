@@ -126,17 +126,23 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
   const handleSend = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (!inputText.trim()) return;
+    const textToSend = inputText.trim();
+    if (!textToSend) return;
 
     if (onTyping) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       onTyping(false);
     }
 
-    onSendMessage(chat.id, inputText, undefined, replyingTo || undefined);
+    onSendMessage(chat.id, textToSend, undefined, replyingTo || undefined);
     setInputText('');
     setReplyingTo(null);
     setShowEmojiPicker(false);
+
+    // Keep mobile virtual keyboard open continuously across sent messages
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   const handleEmojiSelect = (emoji: string) => {
@@ -591,6 +597,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 value={inputText}
                 onChange={handleInputChange}
                 placeholder="Message..."
+                enterKeyHint="send"
+                autoComplete="off"
+                autoCorrect="off"
+                autoCapitalize="sentences"
                 className="flex-1 bg-transparent text-[15px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-normal"
               />
 
@@ -598,7 +608,12 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
               {inputText.trim() ? (
                 <button
                   type="submit"
-                  className="text-[#0095F6] hover:text-blue-400 font-bold text-[14px] px-3 py-1 transition flex-shrink-0 drop-shadow-[0_1px_4px_rgba(0,149,246,0.5)]"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onTouchStart={(e) => {
+                    e.preventDefault();
+                    handleSend();
+                  }}
+                  className="text-[#0095F6] hover:text-blue-400 font-bold text-[14px] px-3 py-1 transition flex-shrink-0 drop-shadow-[0_1px_4px_rgba(0,149,246,0.5)] active:scale-95 cursor-pointer"
                 >
                   Send
                 </button>
@@ -627,7 +642,11 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                   {/* Heart reaction button */}
                   <button
                     type="button"
-                    onClick={() => onSendMessage(chat.id, '❤️')}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      onSendMessage(chat.id, '❤️');
+                      requestAnimationFrame(() => inputRef.current?.focus());
+                    }}
                     className="hover:text-red-500 transition p-1"
                     title="Send a heart"
                   >
