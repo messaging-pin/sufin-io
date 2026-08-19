@@ -488,12 +488,12 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
           </div>
         )}
 
-        <div ref={messagesEndRef} className="h-2 flex-shrink-0" />
+        <div ref={messagesEndRef} className="h-4 flex-shrink-0" />
       </div>
 
       {/* Replying banner if active with Liquid Glass banner */}
       {replyingTo && (
-        <div className="flex-shrink-0 px-4 md:px-12 py-2.5 glass-panel border-t border-white/[0.08] flex items-center justify-between z-20 animate-fadeIn">
+        <div className="flex-shrink-0 px-4 md:px-12 py-2.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20 animate-fadeIn">
           <div className="flex items-center space-x-2.5 truncate">
             <div className="w-6 h-6 rounded-full bg-[#0095F6]/20 text-[#0095F6] flex items-center justify-center flex-shrink-0">
               <CornerUpLeft className="w-3.5 h-3.5 stroke-[2.5]" />
@@ -517,9 +517,9 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
       )}
 
       {/* Message Input Footer with Liquid Glass styling */}
-      <footer className="px-3.5 py-2.5 md:px-6 md:py-3.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
+      <footer className="px-3 pt-2 pb-3 md:px-6 md:py-3.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20">
         <div
-          className="glass-card flex items-center rounded-full px-3.5 py-1.5 md:py-2 border border-white/[0.12] focus-within:border-white/30 transition-all shadow-inner w-full min-h-[44px]"
+          className="glass-card flex items-center rounded-full px-3.5 py-1.5 md:py-2 border border-white/[0.14] focus-within:border-white/30 transition-all shadow-md w-full min-h-[42px]"
         >
           {isRecording ? (
             /* Active Live Voice Recording Pill */
