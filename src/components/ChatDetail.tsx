@@ -517,10 +517,12 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
       )}
 
       {/* Message Input Footer with Liquid Glass styling */}
-      <footer className="p-3 md:p-4 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20">
+      <footer className="px-3.5 py-2.5 md:px-6 md:py-3.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20 pb-[max(0.625rem,env(safe-area-inset-bottom))]">
         <form
           onSubmit={handleSend}
-          className="glass-card flex items-center rounded-full px-3 py-1.5 md:py-2 border border-white/[0.12] focus-within:border-white/25 transition-all shadow-inner"
+          autoComplete="off"
+          data-form-type="other"
+          className="glass-card flex items-center rounded-full px-3.5 py-2 border border-white/[0.12] focus-within:border-white/30 transition-all shadow-inner w-full"
         >
           {isRecording ? (
             /* Active Live Voice Recording Pill */
@@ -563,11 +565,11 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
           ) : (
             <>
               {/* Left Emoji Picker Trigger */}
-              <div className="relative flex-shrink-0">
+              <div className="relative flex-shrink-0 flex items-center">
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-1.5 text-zinc-400 hover:text-white transition"
+                  className="p-1 text-zinc-400 hover:text-white transition"
                   title="Choose emoji"
                 >
                   <Smile className="w-5 h-5 stroke-[1.8]" />
@@ -590,18 +592,31 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 )}
               </div>
 
-              {/* Text Input with Realtime Typing debouncer */}
+              {/* Text Input with Realtime Typing debouncer & Android Autofill Bar Suppression */}
               <input
                 ref={inputRef}
                 type="text"
+                name="chat-msg-content"
+                id="chat-msg-content"
                 value={inputText}
                 onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
                 placeholder="Message..."
                 enterKeyHint="send"
-                autoComplete="off"
+                inputMode="text"
+                autoComplete="one-time-code"
                 autoCorrect="off"
                 autoCapitalize="sentences"
-                className="flex-1 bg-transparent text-[15px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-normal"
+                spellCheck={false}
+                data-form-type="other"
+                data-lpignore="true"
+                data-1p-ignore="true"
+                className="flex-1 bg-transparent text-[15.5px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-normal px-2.5 py-0.5"
               />
 
               {/* Right Action Icons */}
@@ -613,12 +628,12 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     e.preventDefault();
                     handleSend();
                   }}
-                  className="text-[#0095F6] hover:text-blue-400 font-bold text-[14px] px-3 py-1 transition flex-shrink-0 drop-shadow-[0_1px_4px_rgba(0,149,246,0.5)] active:scale-95 cursor-pointer"
+                  className="text-[#0095F6] hover:text-blue-400 font-bold text-[14.5px] px-2.5 py-1 transition flex-shrink-0 drop-shadow-[0_1px_4px_rgba(0,149,246,0.5)] active:scale-95 cursor-pointer"
                 >
                   Send
                 </button>
               ) : (
-                <div className="flex items-center space-x-3 text-zinc-300 flex-shrink-0 pr-1">
+                <div className="flex items-center space-x-2.5 text-zinc-300 flex-shrink-0 pr-0.5">
                   {/* Microphone: Click to Start Live Recording */}
                   <button
                     type="button"
@@ -626,7 +641,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     className="hover:text-white transition p-1"
                     title="Record voice note"
                   >
-                    <Mic className="w-6 h-6 stroke-[1.8]" />
+                    <Mic className="w-5 h-5 stroke-[1.8]" />
                   </button>
 
                   {/* Gallery Image Upload */}
@@ -636,7 +651,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     className="hover:text-white transition p-1"
                     title="Add photo or video"
                   >
-                    <ImageIcon className="w-6 h-6 stroke-[1.8]" />
+                    <ImageIcon className="w-5 h-5 stroke-[1.8]" />
                   </button>
 
                   {/* Heart reaction button */}
@@ -650,7 +665,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     className="hover:text-red-500 transition p-1"
                     title="Send a heart"
                   >
-                    <Heart className="w-6 h-6 stroke-[1.8] hover:fill-red-500" />
+                    <Heart className="w-5 h-5 stroke-[1.8] hover:fill-red-500" />
                   </button>
                 </div>
               )}
