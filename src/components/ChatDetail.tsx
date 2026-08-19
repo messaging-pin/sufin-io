@@ -567,7 +567,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                  className="p-1 text-zinc-400 hover:text-white transition"
+                  className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition flex items-center justify-center"
                   title="Choose emoji"
                 >
                   <Smile className="w-5 h-5 stroke-[1.8]" />
@@ -590,7 +590,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 )}
               </div>
 
-              {/* Chat Composer Textarea (Disables Android Autofill Key/Card Bar completely) */}
+              {/* Chat Composer Textarea */}
               <textarea
                 ref={inputRef}
                 rows={1}
@@ -609,10 +609,10 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 autoCorrect="off"
                 autoCapitalize="sentences"
                 spellCheck={false}
-                className="flex-1 bg-transparent text-[15.5px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-[1.4] px-2.5 py-1 resize-none h-[34px] max-h-[100px] overflow-y-auto no-scrollbar"
+                className="flex-1 bg-transparent text-[15px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-[1.4] px-2.5 py-1 resize-none h-[32px] max-h-[100px] overflow-y-auto no-scrollbar self-center"
               />
 
-              {/* Right Action Icons: React Send Icon Button */}
+              {/* Right Action Icons: Gray theme Send Icon */}
               {inputText.trim() ? (
                 <button
                   type="button"
@@ -622,18 +622,18 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                     e.stopPropagation();
                     handleSend();
                   }}
-                  className="w-8 h-8 rounded-full bg-[#0095F6] hover:bg-blue-600 active:scale-90 text-white flex items-center justify-center transition-all shadow-md flex-shrink-0 cursor-pointer animate-fadeIn"
+                  className="p-1.5 text-zinc-200 hover:text-white hover:bg-white/10 active:scale-90 rounded-full transition-all flex items-center justify-center flex-shrink-0 cursor-pointer animate-fadeIn"
                   title="Send message"
                 >
-                  <Send className="w-4 h-4 translate-x-[1px] stroke-[2.2]" />
+                  <Send className="w-5 h-5 stroke-[1.8] text-zinc-200 hover:text-white" />
                 </button>
               ) : (
-                <div className="flex items-center space-x-2.5 text-zinc-300 flex-shrink-0 pr-0.5 animate-fadeIn">
+                <div className="flex items-center space-x-1 text-zinc-400 flex-shrink-0 animate-fadeIn">
                   {/* Microphone: Click to Start Live Recording */}
                   <button
                     type="button"
                     onClick={() => startRecording()}
-                    className="hover:text-white transition p-1"
+                    className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition flex items-center justify-center"
                     title="Record voice note"
                   >
                     <Mic className="w-5 h-5 stroke-[1.8]" />
@@ -643,7 +643,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                   <button
                     type="button"
                     onClick={() => fileInputRef.current?.click()}
-                    className="hover:text-white transition p-1"
+                    className="p-1.5 text-zinc-400 hover:text-white hover:bg-white/10 rounded-full transition flex items-center justify-center"
                     title="Add photo or video"
                   >
                     <ImageIcon className="w-5 h-5 stroke-[1.8]" />
@@ -659,7 +659,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                       onSendMessage(chat.id, '❤️');
                       requestAnimationFrame(() => inputRef.current?.focus());
                     }}
-                    className="hover:text-red-500 transition p-1 cursor-pointer active:scale-90"
+                    className="p-1.5 text-zinc-400 hover:text-red-500 hover:bg-white/10 rounded-full transition flex items-center justify-center cursor-pointer active:scale-90"
                     title="Send a heart"
                   >
                     <Heart className="w-5 h-5 stroke-[1.8] hover:fill-red-500" />
