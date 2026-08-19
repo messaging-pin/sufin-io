@@ -593,27 +593,163 @@ export function useSupabaseChat({
             }
           });
         }
-      )
+      );
 
+    // ── Catch-up sync from PostgreSQL to guarantee zero dropped messages when idle ──
+    const catchUpSync = async () => {
+      if (!currentUser?.id) return;
+      try {
+        const { data: latestMessages, error } = await supabase
+          .from('messages')
+          .select('*')
+          .or(`sender_id.eq.${myId},recipient_id.eq.${myId},conversation_id.like.%${myId}%`)
+          .order('created_at', { ascending: false })
+          .limit(30);
+
+        if (error || !latestMessages || latestMessages.length === 0) return;
+
+        setChats((prevChats: Chat[]) => {
+          let hasChanges = false;
+          const nextChats = prevChats.map((chat) => {
+            let chatChanged = false;
+            let updatedMessages = [...chat.messages];
+
+            latestMessages.forEach((row: any) => {
+              const isMe = row.sender_id === myId;
+              const partnerId = isMe ? row.recipient_id : row.sender_id;
+              const isThisChat =
+                chat.id === partnerId ||
+                (row.conversation_id && row.conversation_id.includes(chat.id));
+
+              if (!isThisChat) return;
+
+              const existingMsgIndex = updatedMessages.findIndex((m) => m.id === row.id);
+              if (existingMsgIndex !== -1) {
+                // Check if status changed (e.g. sent -> read / delivered)
+                const existing = updatedMessages[existingMsgIndex];
+                if (row.status && row.status !== existing.status) {
+                  chatChanged = true;
+                  updatedMessages[existingMsgIndex] = {
+                    ...existing,
+                    status: row.status,
+                    readAt: row.status === 'read' ? (existing.readAt || row.created_at || new Date().toISOString()) : existing.readAt
+                  };
+                }
+              } else {
+                // New message received while connection was idle/asleep
+                chatChanged = true;
+                const date = row.created_at ? new Date(row.created_at) : new Date();
+                const newMsg: Message = {
+                  id: row.id,
+                  sender: isMe ? 'me' : 'them',
+                  text: row.text || '',
+                  mediaType: row.media_type || undefined,
+                  mediaUrl: row.media_url || undefined,
+                  reaction: row.reaction || undefined,
+                  isForwarded: row.is_forwarded || false,
+                  timestamp: formatTime(date),
+                  dayHeader: date.toLocaleDateString('en-US', { weekday: 'short', hour: 'numeric', minute: 'numeric' }),
+                  createdAt: date.toISOString(),
+                  status: row.status || 'sent',
+                  readAt: row.status === 'read' ? row.created_at : undefined,
+                  replyTo: row.reply_to_text ? { text: row.reply_to_text, senderName: row.reply_to_sender || '' } : undefined
+                };
+                updatedMessages.push(newMsg);
+
+                // Auto-report read if this thread is open in the foreground
+                if (!isMe && selectedChatRef.current?.id === chat.id && canSendReceipts(selectedChatRef.current) && isWindowVisible()) {
+                  if (!ackedReadIds.current.has(row.id)) {
+                    ackedReadIds.current.add(row.id);
+                    sendReceipt('message_read', row.sender_id, [row.id]);
+                  }
+                }
+              }
+            });
+
+            if (chatChanged) {
+              hasChanges = true;
+              const sorted = updatedMessages.sort(
+                (a, b) => new Date(a.createdAt || '').getTime() - new Date(b.createdAt || '').getTime()
+              );
+              const lastMsg = sorted[sorted.length - 1];
+              const updated: Chat = {
+                ...chat,
+                messages: sorted,
+                lastMessage: lastMsg?.text || (lastMsg?.mediaType === 'image' ? 'Photo' : lastMsg?.mediaType === 'video' ? 'Video' : lastMsg?.mediaType === 'voice' ? 'Voice message' : chat.lastMessage),
+                lastMessageTime: lastMsg?.timestamp || chat.lastMessageTime
+              };
+              if (selectedChatRef.current?.id === chat.id) {
+                setSelectedChat(updated);
+              }
+              return updated;
+            }
+            return chat;
+          });
+
+          return hasChanges ? nextChats : prevChats;
+        });
+      } catch (e) {
+        // Background sync notice
+      }
+    };
+
+    channel
       .subscribe((status, err) => {
         console.log('[Supabase Realtime] Channel subscription status:', status, err);
         if (status === 'SUBSCRIBED') {
           channelReadyRef.current = true;
           console.log('[Supabase Realtime] ✅ Channel is SUBSCRIBED and ready for broadcast!');
+          catchUpSync();
         } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
           channelReadyRef.current = false;
           console.warn('[Supabase Realtime] ⚠️ Channel error/timeout, will retry...');
-          // Auto-retry subscription after 3 seconds
-          setTimeout(() => {
-            try {
-              supabase.removeChannel(channel);
-            } catch (e) {}
-            // The useEffect cleanup + re-run will handle re-subscription
-          }, 3000);
         }
       });
 
+    // ── 15s Heartbeat Ping to prevent mobile carrier/router NAT timeout ──
+    const heartbeatInterval = setInterval(() => {
+      if (channelRef.current && channelReadyRef.current) {
+        try {
+          channelRef.current.send({
+            type: 'broadcast',
+            event: 'heartbeat_ping',
+            payload: { from: myId, ts: Date.now() }
+          });
+        } catch (e) {
+          channelReadyRef.current = false;
+        }
+      }
+    }, 15000);
+
+    // ── 6s Background Poller as fail-safe guarantee against missed messages ──
+    const pollerInterval = setInterval(() => {
+      catchUpSync();
+    }, 6000);
+
+    // ── App Wake-Up / Focus Handlers ──
+    const handleWakeUp = () => {
+      catchUpSync();
+      if (!channelReadyRef.current && channelRef.current) {
+        try {
+          channelRef.current.subscribe();
+        } catch (e) {}
+      }
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') handleWakeUp();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('focus', handleWakeUp);
+    window.addEventListener('online', handleWakeUp);
+
     return () => {
+      clearInterval(heartbeatInterval);
+      clearInterval(pollerInterval);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('focus', handleWakeUp);
+      window.removeEventListener('online', handleWakeUp);
       supabase.removeChannel(channel);
     };
   }, [currentUser?.id, currentUser?.display_name, setChats, setSelectedChat]);
