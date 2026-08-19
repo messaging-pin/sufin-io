@@ -260,6 +260,7 @@ export function useSupabaseChat({
       messageIds: string[]
     ) => {
       if (!channelRef.current || messageIds.length === 0) return;
+      const at = new Date().toISOString();
       channelRef.current.send({
         type: 'broadcast',
         event,
@@ -268,9 +269,12 @@ export function useSupabaseChat({
           messageIds,
           readerId: myId,
           readerName: currentUser?.display_name || 'User',
-          at: new Date().toISOString()
+          at
         }
       });
+      if (event === 'message_read') {
+        persistStatus(messageIds, 'read', at);
+      }
     };
 
     /** Applies an inbound receipt to our own outgoing messages. */
@@ -342,8 +346,10 @@ export function useSupabaseChat({
         // It reached this device, so tell the sender "Delivered" right away.
         sendReceipt('message_delivered', senderId, [incomingMsg.id]);
 
-        const threadIsOpen = selectedChatRef.current?.id === senderId ||
-          (sharedConvId && selectedChatRef.current?.id === sharedConvId);
+        const threadIsOpen =
+          selectedChatRef.current?.id === senderId ||
+          (sharedConvId && selectedChatRef.current?.id === sharedConvId) ||
+          (selectedChatRef.current?.name && senderName && selectedChatRef.current.name.toLowerCase() === senderName.toLowerCase());
         if (threadIsOpen && canSendReceipts(selectedChatRef.current) && isWindowVisible()) {
           ackedReadIds.current.add(incomingMsg.id);
           try {
@@ -398,12 +404,13 @@ export function useSupabaseChat({
       })
 
       .on('broadcast', { event: 'message_delivered' }, ({ payload }) => {
-        if (!payload || payload.forSenderId !== myId) return;
+        if (!payload) return;
         applyReceipt(payload.messageIds || [], 'delivered', payload);
       })
 
       .on('broadcast', { event: 'message_read' }, ({ payload }) => {
-        if (!payload || payload.forSenderId !== myId) return;
+        if (!payload) return;
+        console.log('[Realtime] Inbound message_read receipt received:', payload);
         // Their receipts reached us, but if ours are switched off we have given
         // up the right to see them — the trade cuts both ways.
         if (!getReadReceiptsEnabled()) {
@@ -633,7 +640,8 @@ export function useSupabaseChat({
         localStorage.setItem(key, JSON.stringify(Array.from(ackedReadIds.current)));
       } catch (e) {}
 
-      if (channelReadyRef.current) {
+      const at = new Date().toISOString();
+      if (channelRef.current) {
         channelRef.current.send({
           type: 'broadcast',
           event: 'message_read',
@@ -642,10 +650,13 @@ export function useSupabaseChat({
             messageIds: unacked,
             readerId: currentUser.id,
             readerName: currentUser.display_name || 'User',
-            at: new Date().toISOString()
+            at
           }
         });
       }
+
+      // Persist to DB so it remains "Seen" permanently across sessions
+      persistStatus(unacked, 'read', at);
     },
     [currentUser?.id, currentUser?.display_name]
   );

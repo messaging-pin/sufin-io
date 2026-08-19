@@ -107,7 +107,7 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
       document.removeEventListener('visibilitychange', report);
       window.removeEventListener('focus', report);
     };
-  }, [chat, onSeen]);
+  }, [chat.id, chat.messages.length, onSeen]);
 
   const typingTimeoutRef = useRef<any>(null);
 
