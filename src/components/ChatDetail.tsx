@@ -304,8 +304,17 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                       <span className="text-[12px] text-zinc-400 mb-1 mx-1 font-medium">
                         {isMe ? `You replied to ${chat.name}` : `${chat.name} replied`}
                       </span>
-                      <div className="bg-white/[0.08] backdrop-blur-md text-zinc-300 text-[13px] px-3.5 py-2 rounded-[16px] border-l-[3px] border-[#0095F6] border-white/10 opacity-90 truncate max-w-full shadow-sm">
-                        {msg.replyTo.text}
+                      <div className="bg-white/[0.08] backdrop-blur-md text-zinc-300 text-[13px] px-3 py-2 rounded-[16px] border-l-[3px] border-[#0095F6] border-white/10 opacity-95 flex items-center space-x-2.5 max-w-full shadow-sm">
+                        {msg.replyTo.mediaUrl && (
+                          <img
+                            src={msg.replyTo.mediaUrl}
+                            alt="Quoted photo"
+                            className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-white/15 shadow-sm"
+                          />
+                        )}
+                        <span className="truncate">
+                          {msg.replyTo.text || (msg.replyTo.mediaType === 'image' ? 'Photo' : msg.replyTo.mediaType === 'video' ? 'Video' : 'Media attachment')}
+                        </span>
                       </div>
                     </div>
                   )}
@@ -531,23 +540,33 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
 
       {/* Replying banner if active with Liquid Glass banner */}
       {replyingTo && (
-        <div className="flex-shrink-0 px-4 md:px-12 py-2.5 glass-panel border-t border-white/[0.08] flex-shrink-0 z-20 animate-fadeIn">
-          <div className="flex items-center space-x-2.5 truncate">
+        <div className="flex-shrink-0 px-4 md:px-12 py-2 glass-panel border-t border-white/[0.08] flex items-center justify-between z-20 animate-fadeIn">
+          <div className="flex items-center space-x-3 truncate">
             <div className="w-6 h-6 rounded-full bg-[#0095F6]/20 text-[#0095F6] flex items-center justify-center flex-shrink-0">
               <CornerUpLeft className="w-3.5 h-3.5 stroke-[2.5]" />
             </div>
+
+            {/* Media thumbnail preview in reply banner */}
+            {replyingTo.mediaUrl && (
+              <img
+                src={replyingTo.mediaUrl}
+                alt="Replying photo thumbnail"
+                className="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-white/20 shadow-sm"
+              />
+            )}
+
             <div className="flex flex-col truncate">
               <span className="text-xs text-[#0095F6] font-semibold">
                 Replying to {replyingTo.sender === 'me' ? 'yourself' : chat.name}
               </span>
               <span className="text-xs text-zinc-300 truncate max-w-md font-normal">
-                {replyingTo.text}
+                {replyingTo.text || (replyingTo.mediaType === 'image' ? 'Photo' : replyingTo.mediaType === 'video' ? 'Video' : 'Media attachment')}
               </span>
             </div>
           </div>
           <button
             onClick={() => setReplyingTo(null)}
-            className="text-zinc-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition"
+            className="text-zinc-400 hover:text-white p-1 rounded-full hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>

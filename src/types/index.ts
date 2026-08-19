@@ -7,6 +7,8 @@ export interface Message {
   replyTo?: {
     text: string;
     senderName?: string;
+    mediaUrl?: string;
+    mediaType?: 'image' | 'video' | 'voice' | 'link';
   };
   mediaUrl?: string;
   mediaType?: 'image' | 'video' | 'voice' | 'link';

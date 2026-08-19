@@ -300,8 +300,10 @@ export const MessagingPlatform: React.FC<MessagingPlatformProps> = ({ onBackToPi
       mediaUrl: mediaUrl || (mediaType === 'image' ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=800&auto=format&fit=crop&q=80' : undefined),
       replyTo: replyTo
         ? {
-            text: replyTo.text || 'Media attachment',
-            senderName: replyTo.sender === 'me' ? 'You' : selectedChat?.name
+            text: replyTo.text || (replyTo.mediaType === 'image' ? 'Photo' : replyTo.mediaType === 'video' ? 'Video' : replyTo.mediaType === 'voice' ? 'Voice message' : 'Media attachment'),
+            senderName: replyTo.sender === 'me' ? 'You' : selectedChat?.name,
+            mediaUrl: replyTo.mediaUrl,
+            mediaType: replyTo.mediaType
           }
         : undefined,
       timestamp: realTimeStr,
