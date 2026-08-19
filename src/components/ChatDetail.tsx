@@ -612,22 +612,23 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                 className="flex-1 bg-transparent text-[15.5px] text-white placeholder-zinc-400 focus:outline-none min-w-0 font-normal leading-[1.4] px-2.5 py-1 resize-none h-[34px] max-h-[100px] overflow-y-auto no-scrollbar"
               />
 
-              {/* Right Action Icons */}
+              {/* Right Action Icons: React Send Icon Button */}
               {inputText.trim() ? (
                 <button
                   type="button"
-                  onClick={() => handleSend()}
                   onMouseDown={(e) => e.preventDefault()}
-                  onTouchStart={(e) => {
+                  onClick={(e) => {
                     e.preventDefault();
+                    e.stopPropagation();
                     handleSend();
                   }}
-                  className="text-[#0095F6] hover:text-blue-400 font-bold text-[14.5px] px-2.5 py-1 transition flex-shrink-0 drop-shadow-[0_1px_4px_rgba(0,149,246,0.5)] active:scale-95 cursor-pointer"
+                  className="w-8 h-8 rounded-full bg-[#0095F6] hover:bg-blue-600 active:scale-90 text-white flex items-center justify-center transition-all shadow-md flex-shrink-0 cursor-pointer animate-fadeIn"
+                  title="Send message"
                 >
-                  Send
+                  <Send className="w-4 h-4 translate-x-[1px] stroke-[2.2]" />
                 </button>
               ) : (
-                <div className="flex items-center space-x-2.5 text-zinc-300 flex-shrink-0 pr-0.5">
+                <div className="flex items-center space-x-2.5 text-zinc-300 flex-shrink-0 pr-0.5 animate-fadeIn">
                   {/* Microphone: Click to Start Live Recording */}
                   <button
                     type="button"
@@ -652,11 +653,13 @@ export const ChatDetail: React.FC<ChatDetailProps> = ({
                   <button
                     type="button"
                     onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => {
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
                       onSendMessage(chat.id, '❤️');
                       requestAnimationFrame(() => inputRef.current?.focus());
                     }}
-                    className="hover:text-red-500 transition p-1"
+                    className="hover:text-red-500 transition p-1 cursor-pointer active:scale-90"
                     title="Send a heart"
                   >
                     <Heart className="w-5 h-5 stroke-[1.8] hover:fill-red-500" />
